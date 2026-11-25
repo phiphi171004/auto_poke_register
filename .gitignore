@@ -1,0 +1,17 @@
+# Secrets & environment
+.env
+.env.*
+!.env.example
+
+# Local SQLite database, runtime proxies & logs
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/*.log
+data/proxies_runtime.txt
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+.venv/
+venv/

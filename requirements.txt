@@ -1,0 +1,13 @@
+# Web Backend (FastAPI + ASGI + WebSocket + Supabase PostgreSQL / REST)
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+httpx>=0.27.0
+websockets>=12.0
+pydantic>=2.7.0
+python-dotenv>=1.0.1
+psycopg2-binary>=2.9.9
+
+# Auto Register Engine
+requests>=2.31.0
+PySocks>=1.7.1
+faker>=20.0.0

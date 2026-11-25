@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="theme-color" content="#0a0e17">
+  <title>Pokémon Master Auto Web • v2.0 PRO</title>
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="shortcut icon" href="icon.ico">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Sleek Responsive Web Header -->
+  <header class="web-header">
+    <div class="header-brand-group">
+      <div class="brand">
+        <div class="pokeball-icon" aria-hidden="true">
+          <div class="pokeball-top"></div>
+          <div class="pokeball-center"></div>
+          <div class="pokeball-bottom"></div>
+        </div>
+        <div class="brand-titles">
+          <span class="app-title">POKÉMON MASTER AUTO <span class="badge-version">WEB PRO</span></span>
+          <span class="sub-title">Auto Reg • 20 Vé Web • Ấp Cao Cấp 21 Lượt • Đa Luồng &amp; Proxy</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="header-status-group" aria-label="Trạng thái hệ thống">
+      <div id="ws-status-badge" class="status-pill ws-pill status-connecting" title="Trạng thái kết nối WebSocket">
+        <span class="pill-dot"></span>
+        <span id="ws-status-text">Đang kết nối...</span>
+      </div>
+      <div id="storage-status-badge" class="status-pill storage-pill storage-sqlite" title="Hệ thống lưu trữ dữ liệu">
+        <span class="pill-icon">🗄️</span>
+        <span id="storage-status-text">SQLite</span>
+      </div>
+      <div id="header-task-badge" class="status-pill task-pill" title="Trạng thái tiến trình Auto Register">
+        <span class="pill-dot"></span>
+        <span id="header-task-text">Sẵn sàng</span>
+      </div>
+      <button type="button" id="btn-pin-lock" class="btn-pin-lock" title="Khóa phiên đăng nhập PIN" style="display: none;">
+        <span>🔒</span>
+        <span class="lock-label">Khóa</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Responsive Dashboard Container -->
+  <main class="app-container">
+    <!-- Top Bar: Metrics & Primary Action Controls -->
+    <section class="top-header-panel">
+      <!-- Metric Counters -->
+      <div class="metrics-grid">
+        <div class="metric-card card-accounts">
+          <div class="metric-icon">👤</div>
+          <div class="metric-info">
+            <div class="metric-val" id="metric-accounts">0</div>
+            <div class="metric-label">Tài khoản đã tạo</div>
+          </div>
+        </div>
+        <div class="metric-card card-draws">
+          <div class="metric-icon">🥚</div>
+          <div class="metric-info">
+            <div class="metric-val" id="metric-draws">0</div>
+            <div class="metric-label">Lượt rút Ấp Cao Cấp</div>
+          </div>
+        </div>
+        <div class="metric-card card-pets">
+          <div class="metric-icon">🐾</div>
+          <div class="metric-info">
+            <div class="metric-val" id="metric-pets">0</div>
+            <div class="metric-label">Pokémon nhận được</div>
+          </div>
+        </div>
+        <div class="metric-card card-legendaries">
+          <div class="metric-icon">🌟</div>
+          <div class="metric-info">
+            <div class="metric-val" id="metric-legendaries">0</div>
+            <div class="metric-label">Thần thú / Hiếm</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Action Controls -->
+      <div class="header-action-panel">
+        <div class="status-box">
+          <div class="status-indicator" id="status-indicator"></div>
+          <span id="status-text">Hệ thống sẵn sàng</span>
+        </div>
+        <div class="action-btn-row">
+          <button type="button" id="btn-start" class="btn-primary">
+            <span class="btn-icon">🚀</span>
+            <span>BẮT ĐẦU CHẠY</span>
+          </button>
+          <button type="button" id="btn-stop" class="btn-danger" disabled>
+            <span class="btn-icon">⏹️</span>
+            <span>DỪNG LẠI</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Responsive Pill Navigation Bar -->
+    <nav class="tabs-header" role="tablist" aria-label="Điều hướng chức năng">
+      <button type="button" class="tab-btn active" role="tab" aria-selected="true" data-tab="tab-settings">
+        <span class="tab-icon">⚙️</span>
+        <span class="tab-label">Thiết lập &amp; Proxy</span>
+      </button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="tab-console">
+        <span class="tab-icon">📟</span>
+        <span class="tab-label">Nhật ký (Console)</span>
+      </button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="tab-accounts">
+        <span class="tab-icon">📋</span>
+        <span class="tab-label">Tài khoản (<span id="acc-tab-badge">0</span>)</span>
+      </button>
+      <button type="button" class="tab-btn" role="tab" aria-selected="false" data-tab="tab-inventory">
+        <span class="tab-icon">🏆</span>
+        <span class="tab-label">Bộ sưu tập Pokémon</span>
+      </button>
+      <button type="button" class="tab-btn tab-btn-errors" role="tab" aria-selected="false" data-tab="tab-errors" id="btn-tab-errors">
+        <span class="tab-icon">⚠️</span>
+        <span class="tab-label">Nhật ký lỗi (<span id="error-tab-badge">0</span>)</span>
+      </button>
+    </nav>
+
+    <!-- Tab 0: Settings & Proxy Dashboard (Active by default) -->
+    <section class="tab-content active" id="tab-settings">
+      <div class="settings-grid">
+        <!-- Column 1: Server, Account & Proxy -->
+        <div class="settings-col">
+          <!-- Card 1: Server Config -->
+          <div class="panel-section">
+            <div class="section-title-row">
+              <h3 class="section-title"><span class="icon">⚙️</span> Cấu hình Máy Chủ Game</h3>
+              <button type="button" id="btn-refresh-servers" class="btn-icon-refresh" title="Làm mới &amp; Quét Server mới từ game" aria-label="Làm mới danh sách server">
+                <span class="refresh-icon">🔄</span>
+              </button>
+            </div>
+            <div class="form-row">
+              <div class="form-group col-6">
+                <label for="input-search-server">🔍 Tìm Server nhanh:</label>
+                <input type="text" id="input-search-server" placeholder="Gõ số server (vd: 1960, S4, 2160)..." class="server-search-input">
+              </div>
+              <div class="form-group col-6">
+                <label for="select-server" id="lbl-select-server">Chọn Máy Chủ:</label>
+                <select id="select-server" class="server-select">
+                  <option value="2160">Đang tải danh sách server...</option>
+                </select>
+              </div>
+            </div>
+            <div class="server-endpoint-badge mt-2" id="server-endpoint-info">
+              <div class="endpoint-header">
+                <div class="flex-center gap-6">
+                  <span class="badge-dot"></span>
+                  <span class="endpoint-status">SẴN SÀNG KẾT NỐI</span>
+                </div>
+                <span class="endpoint-zone" id="badge-zone-id">Zone 2160</span>
+              </div>
+              <div class="endpoint-ip" id="endpoint-text">
+                TCP Socket: Đang chờ đồng bộ server...
+              </div>
+            </div>
+            <input type="hidden" id="input-zone" value="2160">
+          </div>
+
+          <!-- Card 2: Account Credentials -->
+          <div class="panel-section">
+            <div class="section-title-row">
+              <h3 class="section-title"><span class="icon">👤</span> Tài khoản &amp; Mật khẩu</h3>
+              <span class="badge-tag-opt">Tùy chỉnh</span>
+            </div>
+            <div class="form-row">
+              <div class="form-group col-6">
+                <div class="flex-between">
+                  <label for="input-custom-username">Tên tài khoản (Username):</label>
+                  <label class="random-toggle-label" title="Tick để tự động tạo Username ngẫu nhiên">
+                    <input type="checkbox" id="chk-random-username" checked>
+                    <span>Random</span>
+                  </label>
+                </div>
+                <input type="text" id="input-custom-username" placeholder="Đang bật Random tự động..." class="server-search-input mt-1" disabled>
+                <div class="mt-1" id="box-auto-increment" style="display: none;">
+                  <label class="auto-inc-label">
+                    <input type="checkbox" id="chk-auto-increment-username" checked>
+                    <span>Tự động tăng số (vd: <strong class="text-cyan">kaf100000</strong> ➔ <strong class="text-emerald">kaf100001</strong>...)</span>
+                  </label>
+                </div>
+              </div>
+              <div class="form-group col-6">
+                <div class="flex-between">
+                  <label for="input-custom-password">Mật khẩu (Password):</label>
+                  <label class="random-toggle-label" title="Tick để tự động tạo Mật khẩu ngẫu nhiên">
+                    <input type="checkbox" id="chk-random-password" checked>
+                    <span>Random</span>
+                  </label>
+                </div>
+                <input type="text" id="input-custom-password" placeholder="Đang bật Random tự động..." class="server-search-input mt-1" disabled>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Multi-threading & Proxy -->
+          <div class="panel-section">
+            <div class="section-title-row">
+              <h3 class="section-title"><span class="icon">🌐</span> Cấu hình Đa Luồng &amp; Proxy</h3>
+              <span class="badge-tag-opt" id="proxy-mode-badge">Mạng gốc</span>
+            </div>
+
+            <!-- Threads Config -->
+            <div class="form-group">
+              <div class="flex-between">
+                <label for="input-threads">⚡ Số luồng chạy đồng thời (Threads):</label>
+                <span id="threads-display" class="highlight-val">1 luồng</span>
+              </div>
+              <div class="slider-input-row">
+                <input type="range" id="input-threads-range" min="1" max="50" value="1" class="slider flex-1">
+                <input type="number" id="input-threads" min="1" value="1" class="num-input num-input-compact">
+              </div>
+              <small class="form-hint">Không giới hạn số luồng. Khi dùng Proxy có thể mở nhiều luồng đồng thời.</small>
+            </div>
+
+            <!-- Network Mode Selection -->
+            <div class="form-group mt-2">
+              <label>Chế độ kết nối mạng:</label>
+              <div class="proxy-mode-selector mt-1">
+                <label class="proxy-radio-pill active" id="lbl-net-direct">
+                  <input type="radio" name="network-mode" value="direct" id="radio-net-direct" checked>
+                  <span>🏠 Mạng gốc (Direct)</span>
+                </label>
+                <label class="proxy-radio-pill" id="lbl-net-proxy">
+                  <input type="radio" name="network-mode" value="proxy" id="radio-net-proxy">
+                  <span>🚀 Dùng Proxy (HTTP / SOCKS5)</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Proxy Details Box (Hidden when direct) -->
+            <div id="proxy-details-box" style="display: none;" class="mt-2">
+              <div class="form-row proxy-controls-row">
+                <div class="form-group flex-1">
+                  <label for="select-proxy-type">Loại Proxy:</label>
+                  <select id="select-proxy-type" class="server-select mt-1">
+                    <option value="http">HTTP / HTTPS Proxy</option>
+                    <option value="socks5">SOCKS5 Proxy (Hỗ trợ Socket TCP tốt nhất)</option>
+                  </select>
+                </div>
+                <div class="proxy-actions-row">
+                  <button type="button" class="btn-secondary btn-sm" id="btn-check-proxies">
+                    🔍 Kiểm tra Live
+                  </button>
+                  <button type="button" class="btn-danger btn-sm" id="btn-clear-proxies">
+                    🗑️ Xóa
+                  </button>
+                </div>
+              </div>
+
+              <div class="form-group mt-2">
+                <div class="flex-between">
+                  <label for="textarea-proxies">Danh sách Proxy (tự động lưu trình duyệt):</label>
+                  <span id="proxy-count-badge" class="badge-tag-opt">0 proxy</span>
+                </div>
+                <textarea id="textarea-proxies" class="proxy-textarea mt-1" rows="4" placeholder="Dán proxy vào đây (định dạng: ip:port hoặc ip:port:user:pass)&#10;Ví dụ:&#10;103.152.112.50:8080&#10;103.152.112.51:8080:user:pass"></textarea>
+              </div>
+              <div id="proxy-check-status" class="proxy-check-status text-muted mt-1">
+                Chưa kiểm tra proxy. Danh sách proxy được lưu tự động trên trình duyệt để không mất khi tải lại trang.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 2: Speed & Target Pet Filters -->
+        <div class="settings-col">
+          <!-- Card 4: Count & Speed -->
+          <div class="panel-section">
+            <div class="section-title-row">
+              <h3 class="section-title"><span class="icon">🎮</span> Số lượng &amp; Tốc độ</h3>
+              <span id="rate-limit-badge" class="badge-tag-opt">⚡ Siêu tốc</span>
+            </div>
+            <div class="form-group">
+              <div class="flex-between">
+                <label for="input-count">Số lượng tài khoản:</label>
+                <span id="count-display" class="highlight-val">100</span>
+              </div>
+              <div class="slider-input-row">
+                <input type="range" id="input-count-range" min="1" max="100" value="100" class="slider flex-1">
+                <input type="number" id="input-count" min="1" max="1000" value="100" class="num-input num-input-compact">
+              </div>
+            </div>
+
+            <div class="form-row form-row-3 mt-2">
+              <div class="form-group col-4">
+                <label for="input-delay-min">Delay Min (s):</label>
+                <input type="number" id="input-delay-min" step="0.5" min="0.5" value="1.5">
+              </div>
+              <div class="form-group col-4">
+                <label for="input-delay-max">Delay Max (s):</label>
+                <input type="number" id="input-delay-max" step="0.5" min="1.0" value="3.0">
+              </div>
+              <div class="form-group col-4">
+                <label for="input-rate-limit" title="Số lượng request tối đa trong 1 phút">Rate (req/p):</label>
+                <input type="number" id="input-rate-limit" min="10" max="600" step="10" value="100">
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 5: Target Pet Filter -->
+          <div class="panel-section">
+            <div class="section-title-row">
+              <h3 class="section-title"><span class="icon">🎯</span> Lọc Pet Mục Tiêu</h3>
+              <span class="badge-tag-opt">Reroll Pro</span>
+            </div>
+
+            <!-- Filter Mode Selector -->
+            <div class="pet-mode-selector">
+              <button type="button" class="pet-mode-btn active" id="btn-mode-custom" data-mode="custom">
+                🎯 Chọn Pet cụ thể
+              </button>
+              <button type="button" class="pet-mode-btn" id="btn-mode-legendary" data-mode="legendary">
+                🌟 Mọi Thần Thú
+              </button>
+            </div>
+
+            <!-- Custom Mode Container -->
+            <div id="custom-pet-controls">
+              <!-- Selected Pet Tags Chips -->
+              <div class="selected-pets-box" id="selected-pets-container"></div>
+
+              <!-- Smart Search with Dropdown -->
+              <div class="pet-search-wrapper">
+                <div class="pet-search-input-box">
+                  <span class="search-icon">🔍</span>
+                  <input type="text" id="input-target-pet" placeholder="Gõ tìm pet (vd: Shinx, Mewtwo)..." class="target-pet-input" autocomplete="off">
+                  <button type="button" id="btn-clear-target-input" class="btn-clear-input" title="Xóa chữ" aria-label="Xóa từ khóa tìm pet">✕</button>
+                </div>
+                <div class="pet-suggestions-dropdown" id="pet-suggestions"></div>
+              </div>
+
+              <!-- Quick Pills -->
+              <div class="quick-tags-container" id="quick-tags-box">
+                <button type="button" class="quick-tag" data-pet="Shinx">⚡ Shinx</button>
+                <button type="button" class="quick-tag" data-pet="Mewtwo">✨ Mewtwo</button>
+                <button type="button" class="quick-tag" data-pet="Kyogre">💧 Kyogre</button>
+                <button type="button" class="quick-tag" data-pet="Groudon">🔥 Groudon</button>
+                <button type="button" class="quick-tag" data-pet="Rayquaza">🐉 Rayquaza</button>
+                <button type="button" class="quick-tag" data-pet="Dratini">🦕 Dratini</button>
+                <button type="button" class="quick-tag" data-pet="Lucario">🥊 Lucario</button>
+                <button type="button" class="quick-tag" data-pet="Beldum">⚙️ Beldum</button>
+              </div>
+            </div>
+
+            <!-- Legendary Mode Info Card -->
+            <div id="legendary-mode-box" class="legendary-info-card" style="display: none;">
+              <div class="legendary-info-header">
+                <span class="icon">🌟</span>
+                <strong>Chế độ Săn Thần Thú</strong>
+              </div>
+              <p class="legendary-info-desc">
+                Bất kỳ tài khoản nào ấp trúng <strong>Mewtwo, Kyogre, Groudon, Rayquaza, Dialga, Palkia, Arceus, Zacian...</strong> đều sẽ được tự động giữ lại!
+              </p>
+            </div>
+
+            <div class="form-row mt-2">
+              <div class="col-6">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="chk-filter-only-targets" checked>
+                  <span class="checkmark"></span>
+                  <span class="lbl-text">
+                    <strong>Chỉ hiện nick Trúng Pet</strong>
+                    <small>Tự động ẩn nick không ra pet mục tiêu</small>
+                  </span>
+                </label>
+              </div>
+              <div class="col-6" id="box-match-all-pets">
+                <label class="checkbox-container">
+                  <input type="checkbox" id="chk-match-all-pets">
+                  <span class="checkmark"></span>
+                  <span class="lbl-text">
+                    <strong>Yêu cầu ĐỦ Pet (Combo)</strong>
+                    <small>Bắt buộc ra đủ mọi Pet đã chọn mới tính Đạt</small>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Nature / Personality Filter Dropdown -->
+            <div class="nature-filter-box mt-2">
+              <div class="filter-sub-header">
+                <label for="select-nature-filter" class="filter-sub-label">
+                  <span>⚡ Lọc Tính Cách Pet Mục Tiêu:</span>
+                </label>
+                <span id="badge-nature-count" class="badge-nature-pill">Mọi tính cách</span>
+              </div>
+              <select id="select-nature-filter" class="server-select custom-select-compact">
+                <option value="all">🌐 Tất cả tính cách (Mặc định)</option>
+                <option value="meta">⭐ Mọi tính cách Chuẩn Meta</option>
+                <optgroup label="── Chuẩn Meta (Khuyên dùng) ──">
+                  <option value="1002">Cứng (DAM+10% CRIT-10%) [Meta Vật lý]</option>
+                  <option value="1009">Bảo Thủ (CRIT+10% DAM-10%) [Meta Công Phép]</option>
+                  <option value="1019">Cởi Mở (SPEED+10% CRIT-10%) [Meta Tốc Vật lý]</option>
+                  <option value="1017">Nhát (SPEED+10% DAM-10%) [Meta Tốc Phép]</option>
+                  <option value="1005">Gan Dạ (DEF+10% DAM-10%) [Meta Tanker Phép]</option>
+                  <option value="1006">Bướng (DEF+10% CRIT-10%) [Meta Tanker Vật lý]</option>
+                  <option value="1013">Trầm (ARM+10% DAM-10%) [Meta Kháng Phép]</option>
+                  <option value="1015">Cẩn Thận (ARM+10% CRIT-10%) [Meta Kháng Phép Vật lý]</option>
+                </optgroup>
+                <optgroup label="── Tính Cách Khác ──">
+                  <option value="1001">Cô Đơn (DAM+10% DEF-10%)</option>
+                  <option value="1003">Nghịch (DAM+10% ARM-10%)</option>
+                  <option value="1004">Dũng (DAM+10% SPEED-10%)</option>
+                  <option value="1007">Vô Tư (DEF+10% ARM-10%)</option>
+                  <option value="1008">Nhàn (DEF+10% SPEED-10%)</option>
+                  <option value="1010">Vững (CRIT+10% DEF-10%)</option>
+                  <option value="1011">Vô Tâm (CRIT+10% ARM-10%)</option>
+                  <option value="1012">Im (CRIT+10% SPEED-10%)</option>
+                  <option value="1014">Ngoan (ARM+10% DEF-10%)</option>
+                  <option value="1016">Ngạo (ARM+10% SPEED-10%)</option>
+                  <option value="1018">Nóng (SPEED+10% DEF-10%)</option>
+                  <option value="1020">Ngây Thơ (SPEED+10% ARM-10%)</option>
+                  <option value="1021">Ngại (Cân bằng)</option>
+                  <option value="1022">Thật (Cân bằng)</option>
+                  <option value="1023">Thẳng (Cân bằng)</option>
+                  <option value="1024">Xốc Nổi (Cân bằng)</option>
+                  <option value="1025">Nghiêm (Cân bằng)</option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
+
+          <!-- Card 6: Live Thread & Proxy Mapping Preview -->
+          <div class="panel-section flex-1 thread-mapping-panel" id="panel-thread-mapping">
+            <div class="section-title-row">
+              <h3 class="section-title"><span class="icon">⚡</span> Phân Bổ Luồng &amp; Proxy</h3>
+              <span id="badge-thread-proxy-status" class="badge-tag-opt">1 Luồng • Mạng gốc</span>
+            </div>
+            <div class="thread-mapping-note" id="thread-mapping-note">
+              Mỗi luồng được gán cố định 1 Proxy riêng biệt. Nếu số luồng vượt quá số Proxy, luồng thừa sẽ tự động chạy Mạng gốc.
+            </div>
+            <div class="thread-mapping-container" id="thread-mapping-container"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 1: Live Console -->
+    <section class="tab-content" id="tab-console">
+      <div class="console-toolbar">
+        <div class="console-filters">
+          <button type="button" class="filter-btn active" data-filter="all">Tất cả</button>
+          <button type="button" class="filter-btn" data-filter="pet">🐾 Pet</button>
+          <button type="button" class="filter-btn" data-filter="gacha">🥚 Ấp</button>
+          <button type="button" class="filter-btn" data-filter="mail">📬 Thư</button>
+          <button type="button" class="filter-btn" data-filter="warning">⚠️ Cảnh báo</button>
+        </div>
+        <div class="console-actions">
+          <label class="auto-scroll-lbl">
+            <input type="checkbox" id="chk-autoscroll" checked> Tự cuộn
+          </label>
+          <button type="button" id="btn-clear-console" class="btn-sm btn-secondary">🧹 Xóa màn hình</button>
+        </div>
+      </div>
+      <div class="console-body console-screen" id="console-logs"></div>
+    </section>
+
+    <!-- Tab 2: Accounts Table -->
+    <section class="tab-content" id="tab-accounts">
+      <div class="table-toolbar">
+        <input type="text" id="input-search-acc" placeholder="🔍 Tìm tài khoản, nhân vật, pet, tính cách..." class="search-input">
+        <div class="acc-filter-pills">
+          <button type="button" class="acc-pill active" data-accfilter="target">🎯 Trúng Pet (<span id="count-target-hits">0</span>)</button>
+          <button type="button" class="acc-pill" data-accfilter="miss">❌ Trượt (<span id="count-target-miss">0</span>)</button>
+          <button type="button" class="acc-pill" data-accfilter="pending" id="pill-filter-pending">⏳ Chờ nhận vé (<span id="count-target-pending">0</span>)</button>
+        </div>
+        <div class="table-buttons">
+          <button type="button" id="btn-resume-pending" class="btn-warning btn-sm" title="Chạy tiếp nhận vé và rút pet cho các nick đang chờ" style="display: none;">
+            ⚡ Tiếp tục nhận vé (<span id="count-resume-pending">0</span>)
+          </button>
+          <button type="button" id="btn-delete-failed" class="btn-danger btn-sm" title="Xóa nhanh toàn bộ tài khoản theo bộ lọc hiện tại">
+            🗑️ Xóa All Trúng Pet (0)
+          </button>
+          <button type="button" id="btn-download-txt" class="btn-secondary btn-sm" title="Tải xuống file .txt danh sách tài khoản theo bộ lọc hiện tại">
+            💾 Tải .txt
+          </button>
+          <div class="dropdown-export-wrapper" id="dropdown-export-wrapper">
+            <button type="button" id="btn-export-txt" class="btn-success btn-sm dropdown-export-btn" aria-haspopup="true" aria-expanded="false" title="Copy danh sách tài khoản theo định dạng vào bộ nhớ tạm">
+              <span>📋 Copy All</span>
+              <span class="dropdown-export-caret">▼</span>
+            </button>
+            <div class="dropdown-export-menu" id="dropdown-export-menu" role="menu">
+              <button type="button" class="dropdown-export-item" data-format="standard" role="menuitem">
+                <div class="item-title"><span>📄</span> Định dạng kèm Pet (Gốc)</div>
+                <div class="item-desc">username|password|pet1,pet2</div>
+              </button>
+              <button type="button" class="dropdown-export-item" data-format="two_lines" role="menuitem">
+                <div class="item-title"><span>📋</span> Định dạng 2 dòng (Cách dòng mỗi TK)</div>
+                <div class="item-desc">tk: username<br>mk: password</div>
+              </button>
+              <button type="button" class="dropdown-export-item" data-format="user_pass" role="menuitem">
+                <div class="item-title"><span>⚡</span> Định dạng chuẩn (tk|mk)</div>
+                <div class="item-desc">username|password (Chuẩn app Auto Level)</div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive" id="accounts-table-scroll">
+        <table class="accounts-table">
+          <thead>
+            <tr>
+              <th style="width: 42px;">#</th>
+              <th>Tài khoản (Username)</th>
+              <th>Mật khẩu</th>
+              <th>Tên nhân vật</th>
+              <th>Server</th>
+              <th>Kết quả</th>
+              <th>Pokémon quay được</th>
+              <th style="text-align: right;">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="accounts-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="table-pagination-bar" id="acc-pagination-bar">
+        <div class="pagination-info" id="acc-pagination-info">Hiển thị 0–0 / 0 tài khoản</div>
+        <div class="pagination-controls">
+          <div class="pagination-size-wrap">
+            <label class="pagination-size-label" for="select-acc-page-size">Mỗi trang:</label>
+            <select id="select-acc-page-size" class="pagination-select" title="Số tài khoản hiển thị trên mỗi trang">
+              <option value="50">50 dòng</option>
+              <option value="100">100 dòng</option>
+              <option value="200">200 dòng</option>
+            </select>
+          </div>
+          <div class="pagination-nav-group">
+            <button type="button" class="pagination-btn" id="btn-acc-page-first" title="Trang đầu">⏮</button>
+            <button type="button" class="pagination-btn" id="btn-acc-page-prev" title="Trang trước">◀ Trước</button>
+            <div class="pagination-pages" id="acc-pagination-pages"></div>
+            <button type="button" class="pagination-btn" id="btn-acc-page-next" title="Trang sau">Sau ▶</button>
+            <button type="button" class="pagination-btn" id="btn-acc-page-last" title="Trang cuối">⏭</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Tab 3: Pet Collection Showcase -->
+    <section class="tab-content" id="tab-inventory">
+      <div class="inventory-header">
+        <h3>🌟 Toàn bộ Pokémon quay được từ các đợt Ấp Cao Cấp</h3>
+        <p class="text-muted">Tự động phân loại theo độ quý hiếm (Thần thú / Hiếm / Đặc biệt)</p>
+      </div>
+      <div class="pets-grid" id="pets-collection"></div>
+    </section>
+
+    <!-- Tab 4: Error Logs Showcase -->
+    <section class="tab-content" id="tab-errors">
+      <div class="table-toolbar">
+        <div class="error-toolbar-title">
+          <h3><span>⚠️</span> Nhật ký lỗi chi tiết phiên chạy</h3>
+          <p class="text-muted">Tự động ghi nhận và tách riêng toàn bộ sự cố mạng, socket, lỗi tạo nhân vật để dễ tra cứu</p>
+        </div>
+        <div class="table-buttons">
+          <button type="button" class="btn-secondary btn-sm" id="btn-copy-errors" title="Copy toàn bộ log lỗi">
+            📋 Copy tất cả lỗi
+          </button>
+          <button type="button" class="btn-danger btn-sm" id="btn-clear-errors" title="Xóa lịch sử lỗi">
+            🗑️ Xóa nhật ký lỗi
+          </button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="accounts-table">
+          <thead>
+            <tr>
+              <th style="width: 45px;">#</th>
+              <th style="width: 85px;">Thời gian</th>
+              <th style="width: 140px;">Tài khoản</th>
+              <th style="width: 170px;">Giai đoạn</th>
+              <th>Chi tiết nguyên nhân lỗi</th>
+              <th style="width: 220px;">Gợi ý xử lý &amp; Khắc phục</th>
+              <th style="width: 120px; text-align: center;">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="errors-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal Xem Chi Tiết Flow Lỗi -->
+  <div id="modal-error-flow" class="modal-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="modal-flow-title">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">⚠️</span>
+          <div>
+            <h3 class="modal-title" id="modal-flow-title">Chi Tiết Quy Trình Lỗi: <span id="modal-flow-account" class="text-cyan">N/A</span></h3>
+            <div class="modal-subtitle" id="modal-flow-subtitle">Giai đoạn: Bước 6 • 10:20:30</div>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" id="btn-close-flow-modal" title="Đóng (ESC)" aria-label="Đóng cửa sổ">✕</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="error-summary-card">
+          <div class="error-summary-row">
+            <span class="error-summary-label">🛑 Nguyên nhân:</span>
+            <span class="error-summary-val" id="modal-flow-detail">N/A</span>
+          </div>
+          <div class="error-summary-row mt-1">
+            <span class="error-summary-label">💡 Gợi ý xử lý:</span>
+            <span class="error-summary-tip" id="modal-flow-suggestion">N/A</span>
+          </div>
+        </div>
+
+        <div class="flow-timeline-header">
+          <span>📜 Quy trình thực thi trước khi gặp lỗi (<span id="modal-flow-step-count">0</span> bước):</span>
+          <button type="button" class="btn-secondary btn-sm" id="btn-copy-modal-flow" title="Copy toàn bộ lịch sử flow">
+            📋 Copy toàn bộ Flow
+          </button>
+        </div>
+        <div class="flow-timeline-container" id="modal-flow-timeline"></div>
+      </div>
+
+      <div class="modal-footer">
+        <span class="text-dim text-xs">Mẹo: Bấm ESC hoặc chạm ra ngoài để đóng</span>
+        <button type="button" class="btn-secondary btn-sm" id="btn-close-flow-modal-footer">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sleek PIN Access Modal (Shown only when server ACCESS_PIN is enabled) -->
+  <div id="modal-pin-auth" class="modal-backdrop modal-pin-backdrop" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="pin-modal-title">
+    <div class="modal-box modal-pin-box">
+      <div class="pin-modal-header">
+        <div class="pin-lock-emblem">🔐</div>
+        <h3 id="pin-modal-title" class="pin-modal-title">Xác Thực Truy Cập</h3>
+        <p class="pin-modal-desc">Máy chủ đang bật chế độ bảo vệ bằng mã PIN. Nhập mã PIN để điều khiển hệ thống.</p>
+      </div>
+      <form id="form-pin-auth" class="pin-modal-form" autocomplete="off">
+        <div class="form-group">
+          <label for="input-access-pin">Mã PIN truy cập:</label>
+          <input type="password" id="input-access-pin" class="pin-input" placeholder="Nhập mã PIN..." inputmode="text" autocomplete="current-password" required>
+        </div>
+        <div id="pin-auth-error" class="pin-auth-error" style="display: none;" role="alert"></div>
+        <button type="submit" id="btn-submit-pin" class="btn-primary pin-submit-btn">
+          🔓 Mở khóa hệ thống
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <script src="web_api.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>
