@@ -251,6 +251,7 @@ const chkMatchAllPets = document.getElementById('chk-match-all-pets');
 const boxMatchAllPets = document.getElementById('box-match-all-pets');
 const quickTags = document.querySelectorAll('.quick-tag');
 const accPills = document.querySelectorAll('.acc-pill');
+const countTargetAll = document.getElementById('count-target-all');
 const countTargetHits = document.getElementById('count-target-hits');
 const countTargetMiss = document.getElementById('count-target-miss');
 const countTargetPending = document.getElementById('count-target-pending');
@@ -258,8 +259,20 @@ const countResumePending = document.getElementById('count-resume-pending');
 const btnResumePending = document.getElementById('btn-resume-pending');
 const btnDeleteFailed = document.getElementById('btn-delete-failed') || document.getElementById('btn-smart-delete');
 const btnDownloadTxt = document.getElementById('btn-download-txt');
+const chkClaimAndDraw = document.getElementById('chk-claim-and-draw');
 
 const STORAGE_KEY_MATCH_ALL_PETS = 'pokemon_master_match_all_pets';
+
+// Option Nhận vé & Ấp cao cấp (Lưu trạng thái)
+const savedClaimAndDraw = safeStorageGet('pokemon_master_claim_and_draw');
+if (savedClaimAndDraw !== null && chkClaimAndDraw) {
+  chkClaimAndDraw.checked = savedClaimAndDraw === 'true';
+}
+if (chkClaimAndDraw) {
+  chkClaimAndDraw.addEventListener('change', () => {
+    safeStorageSet('pokemon_master_claim_and_draw', chkClaimAndDraw.checked);
+  });
+}
 
 // Clear legacy Lucky Sigh item filter storage (event ended)
 try { localStorage.removeItem('pokemon_master_selected_lucky_items'); } catch (_e) {}
@@ -1357,6 +1370,7 @@ if (btnStart) {
     }
 
     const autoIncrementUsername = chkAutoIncrementUsername ? chkAutoIncrementUsername.checked : true;
+    const claimAndDraw = chkClaimAndDraw ? chkClaimAndDraw.checked : true;
     const config = {
       count,
       zone,
@@ -1364,8 +1378,8 @@ if (btnStart) {
       delayMax,
       maxPerMinute,
       visitorUpgrade: true,
-      claimMail: true,
-      autoDraw: true,
+      claimMail: claimAndDraw,
+      autoDraw: claimAndDraw,
       customUsername,
       customPassword,
       autoIncrementUsername,
@@ -1581,6 +1595,7 @@ function renderAccountsTable(options = {}) {
     matchedEntries.push({ acc, isPending, hitInfo });
   }
 
+  if (countTargetAll) countTargetAll.textContent = accountsList.length;
   if (countTargetHits) countTargetHits.textContent = hitCount;
   if (countTargetMiss) countTargetMiss.textContent = missCount;
   if (countTargetPending) countTargetPending.textContent = pendingCount;
@@ -1598,6 +1613,7 @@ function renderAccountsTable(options = {}) {
   }
 
   updateSmartDeleteButton();
+  updateCopyButton();
 
   const totalItems = matchedEntries.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / accPageSize));
@@ -1633,7 +1649,11 @@ function renderAccountsTable(options = {}) {
     } else if (acc.status === 'pending_draw') {
       resultBadge = `<span class="badge-target-pending" style="background: rgba(234, 179, 8, 0.15); color: #f59e0b; border: 1px solid rgba(234, 179, 8, 0.35); padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 700;">⏳ Chờ rút pet (B6)</span>`;
     } else if (!acc.pets || acc.pets.length === 0) {
-      resultBadge = `<span class="badge-target-pending" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.35); padding: 3px 8px; border-radius: 5px; font-size: 11px;">⏳ Đang tạo/chờ ấp</span>`;
+      if (acc.status === 'completed') {
+        resultBadge = `<span class="badge-target-pending" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 700;">✅ Đã tạo xong</span>`;
+      } else {
+        resultBadge = `<span class="badge-target-pending" style="background: rgba(234, 179, 8, 0.15); color: #eab308; border: 1px solid rgba(234, 179, 8, 0.35); padding: 3px 8px; border-radius: 5px; font-size: 11px;">⏳ Đang tạo/chờ ấp</span>`;
+      }
     } else if (isHit) {
       const parts = [];
       const safeHitObjs = (Array.isArray(hitObjects) && hitObjects.length > 0) ? hitObjects : (hitPets || []).map(p => ({ name: p, nature: null }));
@@ -1712,7 +1732,7 @@ function renderAccountsTable(options = {}) {
         <div class="pet-chips-container">
           ${isPending
             ? '<span style="color: #f59e0b; font-size: 12px; font-style: italic;">⏳ Chờ kết nối máy chủ để nhận 20 vé &amp; rút pet...</span>'
-            : (petChipsHtml || '<span style="color: var(--text-dim);">Chưa rút</span>')
+            : (petChipsHtml || (acc.status === 'completed' ? '<span style="color: #64748b; font-size: 11.5px; font-style: italic;">(Không bật ấp pet)</span>' : '<span style="color: var(--text-dim);">Chưa rút</span>'))
           }
         </div>
         ${acc.lucky_sigh ? `
@@ -1950,6 +1970,22 @@ function updateSmartDeleteButton() {
   btnDeleteFailed.title = `Xóa toàn bộ ${count} tài khoản ${categoryName} đang hiển thị`;
 }
 
+function updateCopyButton() {
+  if (!btnExportTxt) return;
+  const count = Array.isArray(currentFilteredAccounts) ? currentFilteredAccounts.length : 0;
+  let cat = 'Trúng Pet';
+  if (currentAccFilter === 'all') cat = 'Tất Cả';
+  else if (currentAccFilter === 'miss') cat = 'Acc Trượt';
+  else if (currentAccFilter === 'pending') cat = 'Chờ Nhận Vé';
+
+  const span = btnExportTxt.querySelector('span:first-child');
+  if (span) {
+    span.textContent = `📋 Copy ${cat} (${count})`;
+  } else {
+    btnExportTxt.textContent = `📋 Copy ${cat} (${count})`;
+  }
+}
+
 if (btnDeleteFailed) {
   btnDeleteFailed.addEventListener('click', async () => {
     const targets = Array.isArray(currentFilteredAccounts) ? currentFilteredAccounts : [];
@@ -2070,6 +2106,9 @@ const dropdownExportMenu = document.getElementById('dropdown-export-menu');
 const dropdownExportItems = document.querySelectorAll('.dropdown-export-item');
 
 function getAccountsForExport() {
+  if (Array.isArray(currentFilteredAccounts) && currentFilteredAccounts.length > 0) {
+    return currentFilteredAccounts;
+  }
   if (currentAccFilter === 'all') {
     return accountsList;
   }
@@ -2100,7 +2139,7 @@ function formatAccountsList(exportList, format = 'standard') {
   }
   return exportList.map(acc => {
     const { hitPets } = checkAccountTargetHit(acc);
-    const pokeStr = hitPets.length > 0 ? hitPets.join(',') : (acc.pets ? acc.pets.join(',') : '');
+    const pokeStr = hitPets.length > 0 ? hitPets.join(',') : (acc.pets && acc.pets.length > 0 ? acc.pets.join(',') : `Server ${acc.game_zone_id || acc.zone_id || '2160'}`);
     const luckyStr = acc.lucky_sigh ? `|Quẻ: ${acc.lucky_sigh}` : '';
     return `${acc.username}|${acc.password}|${pokeStr}${luckyStr}`;
   }).join('\n');

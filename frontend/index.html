@@ -312,6 +312,21 @@
               <span class="badge-tag-opt">Reroll Pro</span>
             </div>
 
+            <!-- Option: Nhận vé và Ấp cao cấp -->
+            <div class="claim-draw-toggle-box" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;">
+              <label class="checkbox-container" style="margin: 0; display: flex; align-items: flex-start; cursor: pointer;">
+                <input type="checkbox" id="chk-claim-and-draw" checked>
+                <span class="checkmark" style="margin-top: 2px;"></span>
+                <span class="lbl-text" style="margin-left: 8px;">
+                  <strong style="color: #34d399; font-size: 13px;">🎁 Nhận vé và Ấp cao cấp (Tự động ấp ra Pet)</strong>
+                  <small style="color: #94a3b8; display: block; margin-top: 3px; font-size: 11px; line-height: 1.4;">
+                    • <strong>Tích chọn:</strong> Thực hiện trọn gói từ tạo tài khoản ➔ Nhận 20 vé web ➔ Ấp ra Pet chỉ định.<br>
+                    • <strong>Bỏ tích:</strong> Chỉ tạo tài khoản &amp; nhân vật xong là dừng (không nhận vé và không ấp nữa).
+                  </small>
+                </span>
+              </label>
+            </div>
+
             <!-- Filter Mode Selector -->
             <div class="pet-mode-selector">
               <button type="button" class="pet-mode-btn active" id="btn-mode-custom" data-mode="custom">
@@ -468,6 +483,7 @@
       <div class="table-toolbar">
         <input type="text" id="input-search-acc" placeholder="🔍 Tìm tài khoản, nhân vật, pet, tính cách..." class="search-input">
         <div class="acc-filter-pills">
+          <button type="button" class="acc-pill" data-accfilter="all">🌐 Tất cả (<span id="count-target-all">0</span>)</button>
           <button type="button" class="acc-pill active" data-accfilter="target">🎯 Trúng Pet (<span id="count-target-hits">0</span>)</button>
           <button type="button" class="acc-pill" data-accfilter="miss">❌ Trượt (<span id="count-target-miss">0</span>)</button>
           <button type="button" class="acc-pill" data-accfilter="pending" id="pill-filter-pending">⏳ Chờ nhận vé (<span id="count-target-pending">0</span>)</button>
