@@ -250,60 +250,53 @@
                   <button type="button" class="btn-secondary btn-sm" id="btn-check-proxies">
                     🔍 Kiểm tra Live
                   </button>
-                  <button type="button" class="btn-warning btn-sm" id="btn-filter-live-proxies" title="Chỉ giữ lại các proxy sống (Live), tự động xóa bỏ toàn bộ proxy lỗi">
-                    🧹 Lọc chỉ giữ Live
-                  </button>
                   <button type="button" class="btn-danger btn-sm" id="btn-clear-proxies">
-                    🗑️ Xóa
+                    🗑️ Xóa danh sách
                   </button>
                 </div>
               </div>
 
               <!-- Proxifly Free Proxy Fetcher -->
-              <div class="proxifly-card" style="margin: 8px 0; padding: 10px 12px; background: rgba(56, 189, 248, 0.05); border: 1px dashed rgba(56, 189, 248, 0.35); border-radius: 8px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; flex-wrap: wrap; gap: 4px;">
-                  <span style="font-weight: 600; font-size: 13px; color: #38bdf8; display: inline-flex; align-items: center; gap: 6px;">
-                    <span>🚀</span> Lấy Proxy Free (Proxifly)
-                  </span>
-                  <span style="font-size: 11px; color: #94a3b8;">Kho mở tự động 5p/lần</span>
+              <div class="proxifly-card">
+                <div class="proxifly-header">
+                  <div class="proxifly-title">
+                    <span>🚀</span>
+                    <span>Lấy Proxy Free (Proxifly)</span>
+                  </div>
+                  <span class="proxifly-badge">Kho mở tự động 5p/lần</span>
                 </div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                  <div style="flex: 1; min-width: 120px;">
-                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Quốc gia:</label>
-                    <select id="select-proxifly-country" class="server-select" style="padding: 4px 8px; font-size: 12px; height: 32px; width: 100%;">
-                      <option value="VN">🇻🇳 Việt Nam (VN)</option>
+                <div class="proxifly-controls">
+                  <div class="control-item">
+                    <label for="select-proxifly-country">Quốc gia:</label>
+                    <select id="select-proxifly-country" class="server-select">
                       <option value="ALL" selected>🌍 Tất cả quốc gia</option>
+                      <option value="VN">🇻🇳 Việt Nam (VN)</option>
                       <option value="US">🇺🇸 Mỹ (US)</option>
                       <option value="SG">🇸🇬 Singapore (SG)</option>
                       <option value="JP">🇯🇵 Nhật Bản (JP)</option>
                       <option value="RU">🇷🇺 Nga (RU)</option>
                     </select>
                   </div>
-                  <div style="flex: 1; min-width: 100px;">
-                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Giao thức:</label>
-                    <select id="select-proxifly-proto" class="server-select" style="padding: 4px 8px; font-size: 12px; height: 32px; width: 100%;">
+                  <div class="control-item">
+                    <label for="select-proxifly-proto">Giao thức:</label>
+                    <select id="select-proxifly-proto" class="server-select">
                       <option value="http" selected>HTTP / HTTPS</option>
                       <option value="socks5">SOCKS5</option>
                     </select>
                   </div>
-                  <div style="flex: 1; min-width: 85px;">
-                    <label style="font-size: 11px; color: #94a3b8; display: block; margin-bottom: 2px;">Số lượng:</label>
-                    <select id="select-proxifly-qty" class="server-select" style="padding: 4px 8px; font-size: 12px; height: 32px; width: 100%;">
-                      <option value="20">20 proxy</option>
-                      <option value="50" selected>50 proxy</option>
-                      <option value="100">100 proxy</option>
+                  <div class="control-item">
+                    <label for="select-proxifly-qty">Số lượng LIVE cần lấy:</label>
+                    <select id="select-proxifly-qty" class="server-select">
+                      <option value="20">20 Proxy Live</option>
+                      <option value="50" selected>50 Proxy Live</option>
+                      <option value="100">100 Proxy Live</option>
                     </select>
                   </div>
-                  <div style="display: flex; gap: 6px; align-self: flex-end; padding-top: 14px;">
-                    <button type="button" id="btn-fetch-proxifly" class="btn-success btn-sm" style="height: 32px; font-weight: 600; display: inline-flex; align-items: center; gap: 5px;" title="Tự động tải proxy từ Proxifly, kiểm tra live ngay lập tức và chỉ giữ lại proxy sống">
-                      <span>⚡</span> Lấy & Lọc Live Luôn
-                    </button>
-                    <button type="button" id="btn-fetch-proxifly-raw" class="btn-secondary btn-sm" style="height: 32px;" title="Chỉ tải proxy từ Proxifly đưa vào danh sách mà chưa lọc">
-                      📥 Chỉ Lấy
-                    </button>
-                  </div>
+                  <button type="button" id="btn-fetch-proxifly" class="btn-action-fetch" title="Tự động quét và lọc cho đến khi đủ số lượng proxy LIVE đã chọn">
+                    <span>⚡</span> Lấy &amp; Lọc Đủ Live
+                  </button>
                 </div>
-                <div id="proxifly-status" style="font-size: 11px; color: #94a3b8; margin-top: 6px; display: none;"></div>
+                <div id="proxifly-status" class="proxifly-status-msg" style="display: none;"></div>
               </div>
 
               <div class="form-group mt-2">

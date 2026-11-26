@@ -165,10 +165,8 @@ const proxyDetailsBox = document.getElementById('proxy-details-box');
 const selectProxyType = document.getElementById('select-proxy-type');
 const textareaProxies = document.getElementById('textarea-proxies');
 const btnCheckProxies = document.getElementById('btn-check-proxies');
-const btnFilterLiveProxies = document.getElementById('btn-filter-live-proxies');
 const btnClearProxies = document.getElementById('btn-clear-proxies');
 const btnFetchProxifly = document.getElementById('btn-fetch-proxifly');
-const btnFetchProxiflyRaw = document.getElementById('btn-fetch-proxifly-raw');
 const selectProxiflyCountry = document.getElementById('select-proxifly-country');
 const selectProxiflyProto = document.getElementById('select-proxifly-proto');
 const selectProxiflyQty = document.getElementById('select-proxifly-qty');
@@ -713,110 +711,32 @@ function setupMultiThreadingAndProxyUI() {
     });
   }
 
-  // ================= Filter Live Proxies Only =================
-  async function executeFilterLiveOnly(silent = false) {
-    if (!textareaProxies) return { aliveCount: 0, deadCount: 0 };
-    const rawText = textareaProxies.value;
-    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0 && !l.startsWith('#'));
-    if (lines.length === 0) {
-      if (!silent) showToast('Chưa có proxy nào trong danh sách để lọc!', '⚠️');
-      return { aliveCount: 0, deadCount: 0 };
-    }
-
-    if (btnFilterLiveProxies) btnFilterLiveProxies.disabled = true;
-    if (btnCheckProxies) btnCheckProxies.disabled = true;
-    if (proxyCheckStatus) {
-      proxyCheckStatus.innerHTML = '<span style="color: #38bdf8;">⏳ Đang kiểm tra và lọc chỉ giữ lại Proxy LIVE...</span>';
-    }
-
-    try {
-      const type = selectProxyType ? selectProxyType.value : 'http';
-      const res = await window.electronAPI.checkProxies({ proxies: lines, type });
-      if (res && res.success) {
-        const aliveItems = (res.results || []).filter(r => r.alive);
-        const deadItems = (res.results || []).filter(r => !r.alive);
-        const liveProxies = aliveItems.map(r => r.proxy);
-
-        textareaProxies.value = liveProxies.join('\n');
-        safeStorageSet(STORAGE_KEY_PROXIES, textareaProxies.value);
-        scheduleSaveProxiesToDb(true);
-
-        proxyCheckCache.clear();
-        aliveItems.forEach(r => {
-          proxyCheckCache.set(r.proxy, r);
-          const parts = String(r.proxy || '').split(':');
-          if (parts.length >= 2) proxyCheckCache.set(`${parts[0]}:${parts[1]}`, r);
-        });
-
-        updateProxyCountBadge();
-        renderThreadProxyMapping();
-
-        if (proxyCheckStatus) {
-          if (liveProxies.length > 0) {
-            proxyCheckStatus.innerHTML = `
-              <div style="color: #34d399; font-weight: 600; font-size: 12px; margin-top: 4px;">
-                ✅ Đã lọc xong: Giữ lại ${liveProxies.length} proxy LIVE (đã tự động loại bỏ ${deadItems.length} proxy lỗi/die)!
-              </div>
-            `;
-          } else {
-            proxyCheckStatus.innerHTML = `
-              <div style="color: #f87171; font-weight: 600; font-size: 12px; margin-top: 4px;">
-                ❌ Toàn bộ ${deadItems.length} proxy kiểm tra đều không phản hồi! Vui lòng lấy đợt proxy khác.
-              </div>
-            `;
-          }
-        }
-
-        if (!silent) {
-          if (liveProxies.length > 0) {
-            showToast(`Đã lọc xong! Giữ lại ${liveProxies.length} proxy Live (xóa ${deadItems.length} die)`, '✅');
-          } else {
-            showToast(`Tất cả ${deadItems.length} proxy đều bị die. Đã xóa hết!`, '⚠️');
-          }
-        }
-
-        return { aliveCount: liveProxies.length, deadCount: deadItems.length };
-      }
-    } catch (err) {
-      if (!silent) showToast('Lỗi khi lọc proxy: ' + (err.message || err), '❌');
-    } finally {
-      if (btnFilterLiveProxies) btnFilterLiveProxies.disabled = false;
-      if (btnCheckProxies) btnCheckProxies.disabled = false;
-    }
-    return { aliveCount: 0, deadCount: 0 };
-  }
-
-  if (btnFilterLiveProxies) {
-    btnFilterLiveProxies.addEventListener('click', () => executeFilterLiveOnly(false));
-  }
-
-  // ================= Fetch Free Proxies from Proxifly =================
-  async function fetchProxiflyData(autoFilterLive = false) {
+  // ================= Fetch Free Proxies from Proxifly & Collect Full Target Live =================
+  async function fetchProxiflyData() {
     const country = selectProxiflyCountry ? selectProxiflyCountry.value : 'ALL';
     const proto = selectProxiflyProto ? selectProxiflyProto.value : 'http';
-    const qty = parseInt(selectProxiflyQty ? selectProxiflyQty.value : '50', 10) || 50;
+    const targetQty = parseInt(selectProxiflyQty ? selectProxiflyQty.value : '50', 10) || 50;
 
     if (btnFetchProxifly) btnFetchProxifly.disabled = true;
-    if (btnFetchProxiflyRaw) btnFetchProxiflyRaw.disabled = true;
+    if (btnCheckProxies) btnCheckProxies.disabled = true;
     if (proxiflyStatus) {
       proxiflyStatus.style.display = 'block';
-      proxiflyStatus.innerHTML = '<span style="color: #38bdf8;">⏳ Đang kết nối tải proxy từ Proxifly...</span>';
+      proxiflyStatus.innerHTML = `<span style="color: #38bdf8;">⏳ Đang tải kho proxy Proxifly (Mục tiêu: Đủ ${targetQty} Proxy LIVE)...</span>`;
     }
 
     try {
+      // Yêu cầu tập ứng viên lớn hơn số lượng cần (tối thiểu x4 hoặc 150 proxy) để lọc đủ số live
+      const candidateQty = Math.min(500, Math.max(targetQty * 4, 150));
       let res = null;
       if (window.electronAPI && typeof window.electronAPI.fetchProxifly === 'function') {
-        res = await window.electronAPI.fetchProxifly({ country, protocol: proto, quantity: qty });
+        res = await window.electronAPI.fetchProxifly({ country, protocol: proto, quantity: candidateQty });
       }
 
-      // Direct fallback if API not supported or returned empty
+      // Fallback trực tiếp nếu API Electron không khả dụng
       if (!res || !res.success || !res.proxies || res.proxies.length === 0) {
-        let targetUrl = '';
-        if (country !== 'ALL') {
-          targetUrl = `https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/countries/${country}/data.txt`;
-        } else {
-          targetUrl = `https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/${proto}/data.txt`;
-        }
+        let targetUrl = country !== 'ALL'
+          ? `https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/countries/${country}/data.txt`
+          : `https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/${proto}/data.txt`;
         try {
           const resp = await fetch(targetUrl);
           if (resp.ok) {
@@ -831,7 +751,7 @@ function setupMultiThreadingAndProxyUI() {
               const j = Math.floor(Math.random() * (i + 1));
               [cleaned[i], cleaned[j]] = [cleaned[j], cleaned[i]];
             }
-            res = { success: true, proxies: cleaned.slice(0, qty) };
+            res = { success: true, proxies: cleaned.slice(0, candidateQty) };
           }
         } catch (_e) {}
       }
@@ -843,61 +763,95 @@ function setupMultiThreadingAndProxyUI() {
         return;
       }
 
-      const fetchedProxies = res.proxies;
+      const candidateList = res.proxies;
       if (selectProxyType) {
         selectProxyType.value = proto;
         safeStorageSet(STORAGE_KEY_PROXY_TYPE, proto);
       }
 
-      textareaProxies.value = fetchedProxies.join('\n');
+      // Quét và kiểm tra theo từng đợt (40 proxy/lần) cho đến khi gom ĐỦ targetQty proxy LIVE
+      const CHUNK_SIZE = 40;
+      const collectedLive = [];
+      let totalDead = 0;
+      let testedCount = 0;
+
+      for (let i = 0; i < candidateList.length; i += CHUNK_SIZE) {
+        if (collectedLive.length >= targetQty) break;
+
+        const chunk = candidateList.slice(i, i + CHUNK_SIZE);
+        testedCount += chunk.length;
+        if (proxiflyStatus) {
+          proxiflyStatus.innerHTML = `
+            <span style="color: #38bdf8;">
+              ⏳ Đang kiểm tra (${testedCount}/${candidateList.length} proxy)... Đã tìm được: <strong style="color: #34d399; font-size: 13px;">${collectedLive.length}/${targetQty} LIVE</strong>
+            </span>
+          `;
+        }
+
+        const checkRes = await window.electronAPI.checkProxies({ proxies: chunk, type: proto });
+        if (checkRes && checkRes.success && Array.isArray(checkRes.results)) {
+          const chunkLive = checkRes.results.filter(r => r.alive);
+          const chunkDead = checkRes.results.filter(r => !r.alive);
+          totalDead += chunkDead.length;
+
+          for (const r of chunkLive) {
+            collectedLive.push(r.proxy);
+            proxyCheckCache.set(r.proxy, r);
+            const parts = String(r.proxy || '').split(':');
+            if (parts.length >= 2) proxyCheckCache.set(`${parts[0]}:${parts[1]}`, r);
+            if (collectedLive.length >= targetQty) break;
+          }
+        }
+      }
+
+      if (collectedLive.length === 0) {
+        if (proxiflyStatus) {
+          proxiflyStatus.innerHTML = `
+            <span style="color: #f87171;">
+              ⚠️ Đã kiểm tra ${testedCount} proxy nhưng chưa tìm thấy proxy live. Vui lòng thử lại hoặc chọn quốc gia khác!
+            </span>
+          `;
+        }
+        showToast('Không có proxy nào live trong đợt này. Hãy thử lại!', '⚠️');
+        return;
+      }
+
+      // Lấy đúng số lượng targetQty
+      const finalLiveList = collectedLive.slice(0, targetQty);
+
+      textareaProxies.value = finalLiveList.join('\n');
       safeStorageSet(STORAGE_KEY_PROXIES, textareaProxies.value);
-      scheduleSaveProxiesToDb(true);
+      if (typeof scheduleSaveProxiesToDb === 'function') {
+        scheduleSaveProxiesToDb(true);
+      }
       updateProxyCountBadge();
       renderThreadProxyMapping();
 
-      if (autoFilterLive) {
-        if (proxiflyStatus) {
-          proxiflyStatus.innerHTML = `<span style="color: #38bdf8;">⏳ Đã lấy ${fetchedProxies.length} proxy. Đang tự động kiểm tra & lọc proxy LIVE...</span>`;
-        }
-        const { aliveCount, deadCount } = await executeFilterLiveOnly(true);
-        if (proxiflyStatus) {
-          if (aliveCount > 0) {
-            proxiflyStatus.innerHTML = `
-              <span style="color: #34d399; font-weight: 600;">
-                🎉 Đã lấy ${fetchedProxies.length} proxy từ Proxifly ➔ Lọc được ${aliveCount} proxy LIVE (đã loại bỏ ${deadCount} die)!
-              </span>
-            `;
-            showToast(`Proxifly: Đã lọc được ${aliveCount} proxy Live!`, '🎉');
-          } else {
-            proxiflyStatus.innerHTML = `
-              <span style="color: #f87171;">
-                ⚠️ Đã lấy ${fetchedProxies.length} proxy nhưng không có proxy nào còn sống. Hãy bấm thử lại để đổi lô khác!
-              </span>
-            `;
-            showToast(`Lô proxy vừa lấy không có con nào live. Thử lại nhé!`, '⚠️');
-          }
-        }
-      } else {
-        if (proxiflyStatus) {
-          proxiflyStatus.innerHTML = `<span style="color: #34d399;">✅ Đã lấy ${fetchedProxies.length} proxy từ Proxifly! Hãy bấm "Kiểm tra Live" hoặc "Lọc chỉ giữ Live".</span>`;
-        }
-        showToast(`Đã nạp ${fetchedProxies.length} proxy từ Proxifly!`, '✅');
+      const isFull = finalLiveList.length >= targetQty;
+      if (proxiflyStatus) {
+        proxiflyStatus.innerHTML = `
+          <span style="color: ${isFull ? '#34d399' : '#fbbf24'}; font-weight: 600;">
+            ${isFull ? '🎉' : '✅'} Đã tìm đủ ${finalLiveList.length}/${targetQty} Proxy LIVE (đã tự động quét & loại bỏ ${totalDead} proxy die)!
+          </span>
+        `;
+      }
+      showToast(`Đã gom đủ ${finalLiveList.length} Proxy LIVE sẵn sàng chạy!`, '🎉');
+
+      if (proxyCheckStatus) {
+        proxyCheckStatus.innerHTML = `<span style="color: #34d399; font-weight: 600;">✅ Danh sách hiện có ${finalLiveList.length} proxy LIVE 100%.</span>`;
       }
     } catch (err) {
       const errText = err.message || err;
       if (proxiflyStatus) proxiflyStatus.innerHTML = `<span style="color: #f87171;">❌ Lỗi: ${escapeHtml(errText)}</span>`;
-      showToast('Lỗi tải Proxifly: ' + errText, '❌');
+      showToast('Lỗi: ' + errText, '❌');
     } finally {
       if (btnFetchProxifly) btnFetchProxifly.disabled = false;
-      if (btnFetchProxiflyRaw) btnFetchProxiflyRaw.disabled = false;
+      if (btnCheckProxies) btnCheckProxies.disabled = false;
     }
   }
 
   if (btnFetchProxifly) {
-    btnFetchProxifly.addEventListener('click', () => fetchProxiflyData(true));
-  }
-  if (btnFetchProxiflyRaw) {
-    btnFetchProxiflyRaw.addEventListener('click', () => fetchProxiflyData(false));
+    btnFetchProxifly.addEventListener('click', fetchProxiflyData);
   }
 }
 
