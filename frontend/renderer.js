@@ -725,8 +725,8 @@ function setupMultiThreadingAndProxyUI() {
     }
 
     try {
-      // Yêu cầu tập ứng viên lớn hơn số lượng cần (tối thiểu x4 hoặc 150 proxy) để lọc đủ số live
-      const candidateQty = Math.min(500, Math.max(targetQty * 4, 150));
+      // Yêu cầu tập ứng viên lớn (300 - 1000 proxy) để quét ra đủ số proxy HTTPS CONNECT / SOCKS5 thực sự sống
+      const candidateQty = Math.min(1000, Math.max(targetQty * 15, 300));
       let res = null;
       if (window.electronAPI && typeof window.electronAPI.fetchProxifly === 'function') {
         res = await window.electronAPI.fetchProxifly({ country, protocol: proto, quantity: candidateQty });

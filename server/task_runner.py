@@ -102,25 +102,32 @@ def _now_time_str() -> str:
     return datetime.now().strftime("%H:%M:%S")
 
 
-def _parse_host_port(raw_proxy: str) -> Tuple[str, int]:
-    """Parse proxy host & port from any supported format (matches gui_app/main.js)."""
+def _parse_host_port(raw_proxy: str) -> Tuple[str, int, Optional[str], Optional[str]]:
+    """Parse proxy host, port, username & password from any supported format."""
     trimmed = raw_proxy.strip()
     clean = re.sub(r"^[a-zA-Z0-9]+://", "", trimmed)
-    host = ""
-    port = 0
+    host, port, user, password = "", 0, None, None
     if "@" in clean:
-        host_port = clean.rsplit("@", 1)[-1]
+        parts_at = clean.rsplit("@", 1)
+        auth_part = parts_at[0] if len(parts_at) > 1 else ""
+        host_port = parts_at[-1]
         hp = host_port.split(":")
         host = (hp[0] if len(hp) > 0 else "").strip()
         port_str = (hp[1] if len(hp) > 1 else "").strip()
         port = int(port_str) if port_str.isdigit() else 0
+        if ":" in auth_part:
+            u, p = auth_part.split(":", 1)
+            user, password = u.strip(), p.strip()
     else:
         parts = clean.split(":")
         if len(parts) >= 2:
             host = parts[0].strip()
             port_str = parts[1].strip()
             port = int(port_str) if port_str.isdigit() else 0
-    return host, port
+            if len(parts) >= 4:
+                user = parts[2].strip()
+                password = parts[3].strip()
+    return host, port, user, password
 
 
 class TaskRunner:
@@ -687,7 +694,7 @@ class TaskRunner:
         sem = asyncio.Semaphore(60)
 
         async def _check_one(raw: str) -> Dict[str, Any]:
-            host, port = _parse_host_port(raw)
+            host, port, user, password = _parse_host_port(raw)
             if not host or port <= 0 or port > 65535:
                 return {
                     "proxy": raw,
@@ -703,6 +710,36 @@ class TaskRunner:
                     reader, writer = await asyncio.wait_for(
                         asyncio.open_connection(host, port), timeout=3.5
                     )
+
+                    # Verify real HTTPS tunnel / SOCKS5 handshake
+                    is_socks = (proxy_type or "").lower() == "socks5"
+                    if is_socks:
+                        writer.write(b"\x05\x01\x00")
+                        await writer.drain()
+                        resp = await asyncio.wait_for(reader.read(2), timeout=3.5)
+                        if len(resp) < 2 or resp[0] != 0x05 or resp[1] not in (0x00, 0x02):
+                            raise Exception("Proxy không hỗ trợ SOCKS5 hợp lệ")
+                    else:
+                        # HTTP CONNECT to target game domain
+                        auth_hdr = ""
+                        if user and password:
+                            import base64
+                            b64 = base64.b64encode(f"{user}:{password}".encode()).decode()
+                            auth_hdr = f"Proxy-Authorization: Basic {b64}\r\n"
+                        req = (
+                            f"CONNECT sdk-sg.pocketgamesol.com:443 HTTP/1.1\r\n"
+                            f"Host: sdk-sg.pocketgamesol.com:443\r\n"
+                            f"{auth_hdr}"
+                            f"Proxy-Connection: Keep-Alive\r\n\r\n"
+                        ).encode()
+                        writer.write(req)
+                        await writer.drain()
+                        resp_bytes = await asyncio.wait_for(reader.read(256), timeout=3.5)
+                        resp_text = resp_bytes.decode("latin1", errors="ignore")
+                        if not any(k in resp_text for k in ("200", "Established", "OK")):
+                            status_line = (resp_text.splitlines()[0] if resp_text else "Proxy từ chối CONNECT").strip()
+                            raise Exception(status_line[:50])
+
                     latency_ms = int((time.monotonic() - t0) * 1000)
                     writer.close()
                     try:
@@ -779,7 +816,7 @@ class TaskRunner:
         protocol = (protocol or "http").strip().lower()
         if protocol not in ("http", "socks5", "socks4"):
             protocol = "http"
-        quantity = max(1, min(500, int(quantity or 50)))
+        quantity = max(1, min(1000, int(quantity or 50)))
 
         # 1. If API Key provided, query Proxifly REST API
         if api_key and api_key.strip():
