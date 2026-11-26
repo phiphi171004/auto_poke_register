@@ -121,6 +121,13 @@ class ProxyCheckRequest(BaseModel):
     type: str = Field(default="http")
 
 
+class FetchProxiflyRequest(BaseModel):
+    country: str = Field(default="ALL")
+    protocol: str = Field(default="http")
+    quantity: int = Field(default=50)
+    apiKey: str = Field(default="")
+
+
 # ------------------------------------------------------------------
 # App & Shared Singletons
 # ------------------------------------------------------------------
@@ -306,6 +313,16 @@ async def api_check_proxies(body: ProxyCheckRequest) -> Dict[str, Any]:
         saved_count = await storage.save_proxy_check_results(res["results"], proxy_type=body.type)
         res["saved"] = saved_count
     return res
+
+
+@app.post("/api/proxies/fetch-proxifly", dependencies=[Depends(require_pin)])
+async def api_fetch_proxifly(body: FetchProxiflyRequest) -> Dict[str, Any]:
+    return await task_runner.fetch_proxifly(
+        country=body.country,
+        protocol=body.protocol,
+        quantity=body.quantity,
+        api_key=body.apiKey,
+    )
 
 
 # ------------------------------------------------------------------

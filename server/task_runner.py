@@ -764,3 +764,110 @@ class TaskRunner:
             "dead": dead_count,
             "results": list(results),
         }
+
+    # ------------------------------------------------------------------
+    # Fetch Free Proxies from Proxifly
+    # ------------------------------------------------------------------
+    async def fetch_proxifly(
+        self,
+        country: str = "ALL",
+        protocol: str = "http",
+        quantity: int = 50,
+        api_key: str = "",
+    ) -> Dict[str, Any]:
+        country = (country or "ALL").strip().upper()
+        protocol = (protocol or "http").strip().lower()
+        if protocol not in ("http", "socks5", "socks4"):
+            protocol = "http"
+        quantity = max(1, min(500, int(quantity or 50)))
+
+        # 1. If API Key provided, query Proxifly REST API
+        if api_key and api_key.strip():
+            api_url = "https://api.proxifly.dev/get-proxy"
+            payload: Dict[str, Any] = {
+                "apiKey": api_key.strip(),
+                "protocol": [protocol],
+                "quantity": quantity,
+                "https": True,
+            }
+            if country != "ALL":
+                payload["country"] = [country]
+            try:
+                async with httpx.AsyncClient(timeout=12.0) as client:
+                    resp = await client.post(api_url, json=payload)
+                    if resp.status_code == 200:
+                        data = resp.json()
+                        proxies = []
+                        if isinstance(data, list):
+                            for item in data:
+                                if isinstance(item, dict) and "proxy" in item:
+                                    p = item["proxy"]
+                                    proxies.append(p.split("://")[1] if "://" in p else p)
+                                elif isinstance(item, str):
+                                    proxies.append(item.split("://")[1] if "://" in item else item)
+                        elif isinstance(data, dict):
+                            if "proxy" in data:
+                                p = data["proxy"]
+                                proxies.append(p.split("://")[1] if "://" in p else p)
+                            elif "proxies" in data and isinstance(data["proxies"], list):
+                                for p in data["proxies"]:
+                                    proxies.append(p.split("://")[1] if "://" in p else p)
+                        if proxies:
+                            return {"success": True, "source": "api", "count": len(proxies), "proxies": proxies[:quantity]}
+            except Exception as e:
+                logger.warning(f"Proxifly API fetch failed, falling back to open repo: {e}")
+
+        # 2. Fetch from Proxifly Open Free Proxy Repository
+        urls = []
+        if country != "ALL":
+            urls.append(f"https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/countries/{country}/data.txt")
+            urls.append(f"https://cdn.jsdelivr.net/gh/proxifly/free-proxy-list@main/proxies/countries/{country}/data.txt")
+        else:
+            urls.append(f"https://raw.githubusercontent.com/proxifly/free-proxy-list/main/proxies/protocols/{protocol}/data.txt")
+            urls.append(f"https://cdn.jsdelivr.net/gh/proxifly/free-proxy-list@main/proxies/protocols/{protocol}/data.txt")
+
+        raw_text = ""
+        last_error = ""
+        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+            for url in urls:
+                try:
+                    resp = await client.get(url)
+                    if resp.status_code == 200 and resp.text.strip():
+                        raw_text = resp.text
+                        break
+                except Exception as exc:
+                    last_error = str(exc)
+
+        if not raw_text.strip():
+            return {"success": False, "message": f"Không thể tải proxy từ Proxifly ({last_error or 'Kho dữ liệu trống'})", "proxies": []}
+
+        # Parse & filter
+        raw_lines = [line.strip() for line in raw_text.splitlines() if line.strip() and not line.strip().startswith("#")]
+        parsed_proxies = []
+        for line in raw_lines:
+            if "://" in line:
+                line_proto = line.split("://")[0].lower()
+                clean_host_port = line.split("://")[1]
+                if country != "ALL" and protocol in ("http", "socks5"):
+                    if protocol == "http" and line_proto not in ("http", "https"):
+                        continue
+                    elif protocol == "socks5" and line_proto != "socks5":
+                        continue
+                parsed_proxies.append(clean_host_port)
+            else:
+                parsed_proxies.append(line)
+
+        # Shuffle slightly to get fresh distribution if list is large
+        import random
+        random.shuffle(parsed_proxies)
+        selected = parsed_proxies[:quantity]
+
+        return {
+            "success": True,
+            "source": "free_repo",
+            "country": country,
+            "protocol": protocol,
+            "total_available": len(parsed_proxies),
+            "count": len(selected),
+            "proxies": selected,
+        }

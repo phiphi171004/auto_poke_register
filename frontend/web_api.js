@@ -795,6 +795,21 @@
       }
     },
 
+    fetchProxifly: async (params = {}) => {
+      try {
+        return await apiFetch('/api/proxies/fetch-proxifly', {
+          method: 'POST',
+          body: JSON.stringify(params || {})
+        });
+      } catch (err) {
+        return {
+          success: false,
+          message: err.message || 'Lỗi lấy proxy từ Proxifly',
+          proxies: []
+        };
+      }
+    },
+
     // Browser Clipboard & File Fallbacks
     copyToClipboard: copyToClipboardWeb,
     exportTargetAccounts: exportTargetAccountsWeb,
