@@ -75,18 +75,18 @@ class PinVerifyRequest(BaseModel):
 
 
 class StartTaskRequest(BaseModel):
-    count: int = Field(default=1, ge=1, le=10000)
+    count: int = Field(default=1, ge=1, le=100000000)
     zone: Union[str, int] = Field(default="2160")
     delayMin: float = Field(default=1.5, ge=0.0, le=300.0)
     delayMax: float = Field(default=3.0, ge=0.0, le=300.0)
-    maxPerMinute: int = Field(default=100, ge=1, le=10000)
+    maxPerMinute: int = Field(default=100, ge=1, le=1000000)
     visitorUpgrade: bool = True
     claimMail: bool = True
     autoDraw: bool = True
     customUsername: Optional[str] = Field(default=None, max_length=64)
     customPassword: Optional[str] = Field(default=None, max_length=64)
     autoIncrementUsername: bool = True
-    threads: int = Field(default=1, ge=1, le=100)
+    threads: int = Field(default=1, ge=1, le=500)
     networkMode: str = Field(default="direct")
     proxyType: str = Field(default="http")
     proxies: Union[List[str], str] = Field(default_factory=list)

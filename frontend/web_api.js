@@ -337,10 +337,25 @@
     }
 
     if (!resp.ok) {
-      const msg = (payload && typeof payload === 'object' && (payload.detail || payload.message || payload.error))
-        || (typeof payload === 'string' && payload.trim())
-        || `HTTP ${resp.status}`;
-      throw new Error(String(msg));
+      let msg = '';
+      if (payload && typeof payload === 'object') {
+        if (Array.isArray(payload.detail)) {
+          msg = payload.detail.map(d => {
+            const loc = Array.isArray(d.loc) ? d.loc.filter(x => x !== 'body').join('.') : '';
+            return (loc ? `${loc}: ` : '') + (d.msg || JSON.stringify(d));
+          }).join('; ');
+        } else if (typeof payload.detail === 'string') {
+          msg = payload.detail;
+        } else if (payload.message) {
+          msg = typeof payload.message === 'string' ? payload.message : JSON.stringify(payload.message);
+        } else if (payload.error) {
+          msg = typeof payload.error === 'string' ? payload.error : JSON.stringify(payload.error);
+        }
+      } else if (typeof payload === 'string' && payload.trim()) {
+        msg = payload.trim();
+      }
+      if (!msg) msg = `HTTP ${resp.status}`;
+      throw new Error(msg);
     }
 
     return payload;
