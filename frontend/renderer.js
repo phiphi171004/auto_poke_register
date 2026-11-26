@@ -788,7 +788,12 @@ function setupMultiThreadingAndProxyUI() {
           `;
         }
 
-        const checkRes = await window.electronAPI.checkProxies({ proxies: chunk, type: proto });
+        let checkRes = null;
+        try {
+          checkRes = await window.electronAPI.checkProxies({ proxies: chunk, type: proto });
+        } catch (checkErr) {
+          console.warn('[Proxifly] Lỗi đợt kiểm tra chunk:', checkErr);
+        }
         if (checkRes && checkRes.success && Array.isArray(checkRes.results)) {
           const chunkLive = checkRes.results.filter(r => r.alive);
           const chunkDead = checkRes.results.filter(r => !r.alive);
