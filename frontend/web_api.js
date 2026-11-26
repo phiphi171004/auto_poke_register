@@ -534,7 +534,7 @@
   async function copyToClipboardWeb(text) {
     const str = String(text ?? '');
     try {
-      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function' && window.isSecureContext) {
+      if (document.hasFocus() && navigator.clipboard && typeof navigator.clipboard.writeText === 'function' && window.isSecureContext) {
         await navigator.clipboard.writeText(str);
         return true;
       }

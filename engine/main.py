@@ -728,15 +728,35 @@ class AutoRegisterTool:
                     _THREAD_LOG_CTX.prefix = ""
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.threads) as executor:
-                futures = [executor.submit(worker_task, i) for i in range(count)]
-                for future in concurrent.futures.as_completed(futures):
-                    try:
-                        r = future.result()
-                        results.append(r)
-                        if r.get("success"):
-                            success_count += 1
-                    except Exception as e:
-                        logger.error(f"❌ Lỗi luồng thực thi: {e}")
+                # Dung cua so truot (sliding window) de tranh tao hang trieu Future trong RAM gay OOM sap may chu
+                max_in_flight = max(self.threads * 2, 20)
+                active_futures = set()
+                task_iter = iter(range(count))
+
+                # Dua truoc so luong task tuong ung voi so luong dang chay vao pool
+                for _ in range(min(count, max_in_flight)):
+                    idx = next(task_iter, None)
+                    if idx is not None:
+                        active_futures.add(executor.submit(worker_task, idx))
+
+                while active_futures:
+                    done, active_futures = concurrent.futures.wait(
+                        active_futures, return_when=concurrent.futures.FIRST_COMPLETED
+                    )
+                    for future in done:
+                        try:
+                            r = future.result()
+                            if r and r.get("success"):
+                                success_count += 1
+                            # Gioi han danh sach ket qua luu trong RAM toi da 500 ban ghi de tiet kiem bo nho
+                            if len(results) < 500:
+                                results.append(r)
+                        except Exception as e:
+                            logger.error(f"❌ Lỗi luồng thực thi: {e}")
+
+                        next_idx = next(task_iter, None)
+                        if next_idx is not None:
+                            active_futures.add(executor.submit(worker_task, next_idx))
         else:
             # Sequential 1 thread
             for i in range(count):

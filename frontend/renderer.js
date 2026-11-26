@@ -1401,7 +1401,8 @@ if (btnStart) {
 
     const res = await window.electronAPI.startTask(config);
     if (!res || !res.success) {
-      const errMsg = (res && (typeof res.message === 'string' ? res.message : JSON.stringify(res.message))) || 'Lỗi không xác định';
+      const rawMsg = res ? (res.message || res.error || res.detail || res) : 'Lỗi không xác định';
+      const errMsg = typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg);
       addLogLine(`❌ Không thể khởi động: ${errMsg}`, 'warning');
       showToast(errMsg, '⚠️');
       setRunningState(false);
